@@ -1,0 +1,32 @@
+services:
+
+    # this container will run Cypress test using Chrome browser
+    e2e:
+        image: "cypress/included:latest"
+        command: "ls -la"
+        entrypoint: ""
+        working_dir: /var/www/cypress
+        environment:
+            CYPRESS_VIDEO: 'false'
+            DISPLAY:
+        volumes:
+            - ~/.Xauthority:/root/.Xauthority:rw
+            - .:/var/www
+        network_mode: host
+
+    workspace:
+        build:
+            context: .docker/workspace
+        extra_hosts:
+            - host.docker.internal:host-gateway
+        working_dir: /var/www
+        command: symfony server:start --no-tls
+        volumes:
+            - .:/var/www
+            - ~/.composer:/home/algoritma/.composer
+            - ~/.bashrc:/home/algoritma/.bashrc
+        network_mode: host
+
+    mailcatcher:
+        image: docker.algoritma.it/algoritma/mailcatcher:0.8.2-alpine
+        network_mode: host
