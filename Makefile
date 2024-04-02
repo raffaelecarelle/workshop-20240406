@@ -11,4 +11,4 @@ down:
 	docker compose down
 
 cy-open:
-	docker compose run --rm e2e cypress open
+	docker compose run --rm e2e cypress open --project .
