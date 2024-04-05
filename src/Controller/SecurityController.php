@@ -12,9 +12,12 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Utils\Validator;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
@@ -38,9 +41,10 @@ final class SecurityController extends AbstractController
     #[Route('/login', name: 'security_login')]
     public function login(
         #[CurrentUser] ?User $user,
-        Request $request,
-        AuthenticationUtils $helper,
-    ): Response {
+        Request              $request,
+        AuthenticationUtils  $helper,
+    ): Response
+    {
         // if user is already logged in, don't display the login page again
         if ($user) {
             return $this->redirectToRoute('blog_index');
@@ -57,6 +61,53 @@ final class SecurityController extends AbstractController
             'last_username' => $helper->getLastUsername(),
             // last authentication error (if any)
             'error' => $helper->getLastAuthenticationError(),
+        ]);
+    }
+
+    #[Route('/register', name: 'security_register')]
+    public function register(
+        #[CurrentUser] ?User $user,
+        Request              $request,
+        Validator            $validator,
+        UserPasswordHasherInterface $passwordHasher,
+        ManagerRegistry $doctrine
+    ): Response
+    {
+        // if user is already logged in, don't display the login page again
+        if ($user) {
+            return $this->redirectToRoute('blog_index');
+        }
+
+        if ($request->isMethod('POST')) {
+
+            try {
+                $validator->validateUsername($username = $request->get('username'));
+                $validator->validateEmail($email = $request->get('email'));
+                $validator->validatePassword($password = $request->get('password'));
+                $validator->validateFullName($fullName = $request->get('full_name'));
+
+                $user = new User();
+                $user->setFullName($fullName);
+                $user->setEmail($email);
+                $user->setUsername($username);
+                $user->setPassword($passwordHasher->hashPassword($user, $password));
+                $user->setRoles(['ROLE_USER']);
+
+                $doctrine->getManager()->persist($user);
+                $doctrine->getManager()->flush();
+
+                $this->addFlash('success', 'User created');
+
+                return $this->redirectToRoute('security_login');
+            } catch (\InvalidArgumentException $exception) {
+                $this->addFlash('danger', $exception->getMessage());
+            }
+        }
+
+        return $this->render('security/register.html.twig', [
+            'full_name' => $request->get('full_name'),
+            'email' => $request->get('email'),
+            'username' => $request->get('username')
         ]);
     }
 }
