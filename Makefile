@@ -12,3 +12,6 @@ down:
 
 cy-open:
 	docker compose run --rm e2e cypress open --project .
+
+run:
+	docker compose exec workspace composer run $(filter-out $@, $(MAKECMDGOALS))
